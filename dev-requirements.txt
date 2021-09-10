@@ -1,0 +1,14 @@
+mypy
+
+# For testing
+tox
+pytest
+coverage
+
+# Used for code checking.
+pyflakes
+flake8
+
+# For release
+wheel
+twine

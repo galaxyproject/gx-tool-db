@@ -1,0 +1,5 @@
+Tool ID,Label
+toolshed.g2.bx.psu.edu/repos/iuc/bedtools/bedtools_makewindowsbed,awesome
+toolshed.g2.bx.psu.edu/repos/iuc/sqlite_to_tabular/sqlite_to_tabular,awesome
+toolshed.g2.bx.psu.edu/repos/devteam/bwa/bwa_mem,awesome
+toolshed.g2.bx.psu.edu/repos/devteam/bowtie2/bowtie2,meh
