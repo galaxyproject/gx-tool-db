@@ -8,7 +8,7 @@ VENV?=.venv
 IN_VENV=if [ -f $(VENV)/bin/activate ]; then . $(VENV)/bin/activate; fi;
 # TODO: add this upstream as a remote if it doesn't already exist.
 UPSTREAM?=galaxyproject
-SOURCE_DIR?=gx-tool-db
+SOURCE_DIR?=gx_tool_db
 BUILD_SCRIPTS_DIR=scripts
 DEV_RELEASE?=0
 VERSION?=$(shell DEV_RELEASE=$(DEV_RELEASE) python $(BUILD_SCRIPTS_DIR)/print_version_for_release.py $(SOURCE_DIR) $(DEV_RELEASE))

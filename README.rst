@@ -56,8 +56,6 @@ can be exported as standard CSV files or more typical Galaxy style tabular
     $ gx-tool-db export-tabular --all-coverage --output coverage_public_servers.tsv
     $ gx-tool-db export-tabular --coverage org --coverage test --output coverage_public_servers.csv
 
-::
-
 Next lets start apply tool labels. Lets read a list of deprecated tool IDs from a file or URL using
 the ``import-label`` command.
 
