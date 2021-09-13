@@ -114,11 +114,15 @@ for specified labels (these labels don't even need to exist ahead of time).
 The same spreadsheet can then be re-imported using the ``import-tabular`` and the
 same labels to read the data back into the structured gx-tool-db database file.
 
+::
+
     $ gx-tool-db export-tabular --all-coverage --label really_cool --label meh --output to_curate.tsv
     $ gx-tool-db import-tabular to_curate.tsv --label really_cool --label meh
 
 For these spreadsheet commands, the target spreadsheet can also be an Google Sheets
 ID for collobrative editing.
+
+::
 
     $ gx-tool-db export-tabular --all-coverage --label really_cool --label meh --output 'sheet:1N84CziEyW0Z109slrL33cuFt3Wpuu037zogkBMhk-C0'
     $ gx-tool-db import-tabular 'sheet:1N84CziEyW0Z109slrL33cuFt3Wpuu037zogkBMhk-C0' --label really_cool --label meh
@@ -126,10 +130,14 @@ ID for collobrative editing.
 Finally, to assist in maual curation of the database tool runtime results can be
 stored in the database as well.
 
+::
+
     $ gx-tool-db import-tests https://raw.githubusercontent.com/almahmoud/anvil-misc/master/reports/anvil-production/tool-tests/gxy-auto-06-27-16-32-39-1/results.json anvil
 
 Test data summaries can then be included as part `export-tabular`` to help curate tool labels -
 either all test data labels or specified ones.
+
+::
 
     $ gx-tool-db export-tabular --all-tests --label really_cool --label meh --output to_curate_all_the_tests.tsv
     $ gx-tool-db export-tabular --tests anvil --label really_cool --label meh --output to_curate_only_anvil_tests.tsv
