@@ -326,7 +326,6 @@ class ToolEntry:
         if len(versions) == 0:
             return None
 
-        latest_version = _version_sorted_keys(versions)[0]
         if self._server is not None:
             server_source = self._server_dict()
             server_versions = _ensure_key(server_source, "versions", [])
@@ -394,7 +393,7 @@ class ToolEntry:
         return self._tool_id
 
     @property
-    def latest_version(self) -> str:
+    def latest_version(self) -> Optional[str]:
         keys = _version_sorted_keys(self._source_data.get("version", {}))
         return keys[0] if keys else None
 
@@ -475,6 +474,7 @@ def _versionless_tool_id(tool_id):
 
 def _version_sorted_keys(versions_dict: Dict[str, Any]) -> List[str]:
     return version_sorted_iterable(versions_dict.keys())
+
 
 def version_sorted_iterable(iterable) -> List[str]:
     return list(sorted(iterable, key=packaging.version.parse, reverse=True))

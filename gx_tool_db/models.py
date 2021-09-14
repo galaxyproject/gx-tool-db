@@ -13,7 +13,7 @@ from typing_extensions import Literal
 from .config import DEFAULT_DATABASE_PATH, TestDataMergeStrategy
 
 
-class GxToolDbBaseModel(BaseModel, extra=Extra.forbid):
+class GxToolDbBaseModel(BaseModel, extra=Extra.forbid):  # type: ignore
     pass
 
 

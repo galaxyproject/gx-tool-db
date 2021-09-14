@@ -50,6 +50,14 @@ def test_export_coverage(usegalaxy_org_metadata_dir):
     assert output.startswith("Tool ID,Latest Version")
 
 
+def test_export_coverage_versions(usegalaxy_org_metadata_dir):
+    main(["export-coverage-versions", "--output", "foo.tsv"])
+    output = Path("foo.tsv").read_text("utf-8")
+    assert "__DATA_FETCH__" in output
+    assert "," not in output
+    assert output.startswith("Tool ID\tTool Version\tLatest Version\tIs Latest Version")
+
+
 def test_export_install_yaml(usegalaxy_org_metadata_dir):
     main(["export-install-yaml"])
     repos = load_tools_yaml_repos()
