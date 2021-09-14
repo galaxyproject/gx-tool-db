@@ -9,13 +9,10 @@ TODO:
 """
 import argparse
 import contextlib
-import io
-import json
 import sys
-from typing import Any, cast, List, Optional
+from typing import Any, cast, Dict, List, Optional
 
 import requests
-import urllib3
 import yaml
 
 from .config import (
@@ -28,6 +25,7 @@ from .config import (
     FilterArguments,
     PUBLIC_SERVERS,
     Server,
+    TestDataMergeStrategy,
     USEGALAXY_ORG_URL,
     ViewDefintion,
 )
@@ -41,8 +39,13 @@ from .db import (
 from .io import (
     csv_reader,
     csv_writer,
+    open_uri,
     warn,
 )
+from .models import (
+    TestResults,
+)
+from .results import result_collections
 from .sheets import (
     download_sheet_to_list,
     download_sheet_to_path,
@@ -69,34 +72,6 @@ class Config:
 
     def __init__(self, metadata_file: str):
         self.metadata_file = metadata_file
-
-
-class TestResults:
-
-    def __init__(self, path):
-        results = {}
-        with _open_uri(path) as f:
-            results = json.load(f)
-            tests = results["tests"]
-
-        results_by_id = {}
-        for result in tests:
-            if not result.get("has_data"):
-                continue
-            result_data = result.get("data")
-            tool_id = result_data['tool_id']
-            if tool_id not in results_by_id:
-                results_by_id[tool_id] = []
-            results_by_id[tool_id].append(result_data)
-        self.results_by_id = results_by_id
-
-    def get_results_for_tool_id(self, tool_id):
-        results_by_id = self.results_by_id
-        if tool_id in results_by_id:
-            return results_by_id[tool_id]
-        else:
-            tool_id = tool_id.rsplit("/", 1)[0]
-            return results_by_id.get(tool_id)
 
 
 def bootstrap_tools_metadata(config: Config, server: Server):
@@ -213,15 +188,24 @@ def label_workflow_tools(config: Config, input: str, labels: List[str]):
                 tool_entry.record_external_label(label)
 
 
-def import_test_results(config, path, test_target):
-    test_results = TestResults(path)
+def import_test_results(config, uri, test_target, merge_strategy: TestDataMergeStrategy):
     with _writable_database(config) as tools_metadata:
-        for tool_id, results in test_results.results_by_id.items():
-            for result in results:
-                tool_version = result["tool_version"]
-                tool_entry = tools_metadata.get_entry_for(tool_id)
-                tool_version_entry = tool_entry.get_version_entry(tool_version)
-                tool_version_entry.record_test_result(test_target, result)
+        for test_result_collection in result_collections(uri):
+            test_results = test_result_collection.results
+            for tool_id, results in test_results.results_by_id.items():
+                by_versions: Dict[str, List[Dict[str, Any]]] = {}
+                for result in results:
+                    tool_version = result["tool_version"]
+                    if tool_version not in by_versions:
+                        by_versions[tool_version] = []
+
+                    by_versions[tool_version].append(result)
+
+                for tool_version, tool_version_results in by_versions.items():
+                    tool_entry = tools_metadata.get_entry_for(tool_id)
+                    tool_version_entry = tool_entry.get_version_entry(tool_version)
+                    test_results = TestResults.from_test_output_dicts(tool_version_results)
+                    tool_version_entry.record_test_results(test_target, test_results, merge_strategy)
 
 
 def export_coverage(config, export_config: ExportSpreadsheetConfig):
@@ -350,15 +334,13 @@ def spreadsheet_bool(val):
 
 
 def clear_test_results(config, test_target):
-    tools_metadata = ToolsMetadata(config.metadata_file)
-    tools_metadata.clear_test_results(test_target)
-    tools_metadata.write()
+    with _writable_database(config) as tools_metadata:
+        tools_metadata.clear_test_results(test_target)
 
 
 def clear_label(config, label_key):
-    tools_metadata = ToolsMetadata(config.metadata_file)
-    tools_metadata.clear_label(label_key)
-    tools_metadata.write()
+    with _writable_database(config) as tools_metadata:
+        tools_metadata.clear_label(label_key)
 
 
 def google_export(input, sheet_id):
@@ -395,7 +377,7 @@ def import_labels(config, input):
 
 
 def import_label(config, input, label):
-    with _open_uri(input) as f:
+    with open_uri(input) as f:
         contents = f.read()
     tool_ids = [line.strip() for line in contents.split("\n")]
     tool_id_pairs = [(t_i, label) for t_i in tool_ids]
@@ -482,7 +464,7 @@ def arg_parser():
     parser_import_test_results = subparsers.add_parser('import-tests', help='import test results')
     parser_import_test_results.add_argument('input', help='Input to read from')
     parser_import_test_results.add_argument('test_target', help='Target of tool tests')
-
+    parser_import_test_results.add_argument('--merge-strategy', choices=TestDataMergeStrategy.__members__.keys(), default="latest_executed")
     parser_clear_test_results = subparsers.add_parser('clear-tests', help='clear test results for target server')
     parser_clear_test_results.add_argument('test_target', help='Target of tool tests')
 
@@ -545,7 +527,8 @@ def main(argv=None):
         assert labels
         import_tabular(config, args.input, labels)
     elif command == "import-tests":
-        import_test_results(config, args.input, args.test_target)
+        merge_strategy = TestDataMergeStrategy.__members__[args.merge_strategy]
+        import_test_results(config, args.input, args.test_target, merge_strategy)
     elif command == "export-tabular":
         export_config = ExportSpreadsheetConfig(args)
         export_coverage(config, export_config)
@@ -582,16 +565,6 @@ def main(argv=None):
         google_import(args.sheet_id, args.output)
     else:
         raise Exception(f"Unknown command [{command}]")
-
-
-def _open_uri(input_path_or_uri: str):
-    if "://" not in input_path_or_uri:
-        return open(input_path_or_uri, "r")
-    else:
-        http = urllib3.PoolManager()
-        r = http.request('GET', input_path_or_uri, preload_content=False)
-        r.auto_close = False
-        return io.TextIOWrapper(r)
 
 
 @contextlib.contextmanager

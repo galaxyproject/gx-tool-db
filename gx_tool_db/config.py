@@ -1,5 +1,6 @@
 """Configuration related constants and objects.
 """
+from enum import Enum
 from typing import List, Optional, Type, Union
 
 DEFAULT_DATABASE_PATH = "tools_metadata.yml"
@@ -70,6 +71,16 @@ class AllData:
 ALL_SERVER_LABELS = AllData()
 ALL_TEST_LABELS = AllData()
 ALL_LABELS = AllData()
+
+
+class TestDataMergeStrategy(str, Enum):
+    latest_added = 'latest_added'
+    latest_executed = 'latest_executed'
+    best = 'best'
+
+    latest_added_indexwise = 'latest_added_indexwise'
+    latest_executed_indexwise = 'latest_executed_indexwise'
+    best_indexwise = 'best_indexwise'
 
 
 class ExportSpreadsheetConfig(FilterArguments):

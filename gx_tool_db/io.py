@@ -1,6 +1,10 @@
 import contextlib
 import csv
+import io
+import os
 from typing import Any, Dict
+
+import urllib3
 
 
 def warn(message):
@@ -39,3 +43,23 @@ def _path_to_csv_args(path: str) -> Dict[str, Any]:
     if not path.endswith("csv"):
         csv_kwds = dict(delimiter="\t", quotechar='"')
     return csv_kwds
+
+
+def repository_walk(path, extensions=None):
+    """Variant of os.walk that skips hidden files."""
+    for (dirpath, dirs, filenames) in os.walk(path):
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        filenames[:] = [f for f in filenames if not f.startswith(".")]
+        if extensions is not None:
+            filenames[:] = [f for f in filenames if any(f.endswith(e) for e in extensions)]
+        yield (dirpath, dirs, filenames)
+
+
+def open_uri(input_path_or_uri: str):
+    if "://" not in input_path_or_uri:
+        return open(input_path_or_uri, "r")
+    else:
+        http = urllib3.PoolManager()
+        r = http.request('GET', input_path_or_uri, preload_content=False)
+        r.auto_close = False
+        return io.TextIOWrapper(r)

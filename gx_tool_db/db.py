@@ -6,9 +6,9 @@ from typing import Any, Dict, List, Optional, Set
 import packaging.version
 import yaml
 
-from .config import FilterArguments, Server, ViewDefintion
+from .config import FilterArguments, Server, TestDataMergeStrategy, ViewDefintion
 from .io import warn
-from .models import load_from_dict
+from .models import load_from_dict, TestResults
 
 
 DATABASE_VERSION = "1.0"
@@ -98,11 +98,15 @@ class ToolsMetadata:
             for version in tool_metadata.get("versions", {}).values():
                 test_results = version.get("test_results", {})
                 test_results.pop(test_target, None)
+                if not test_results:
+                    version.pop("test_results", None)
 
     def clear_label(self, label_key):
         for _, tool_metadata in self._tools_dict().items():
             external_labels = tool_metadata.get("external_labels", {})
             external_labels.pop(label_key, None)
+            if not external_labels:
+                tool_metadata.pop("external_labels", None)
 
     def _tools_dict(self):
         return _ensure_key(self.metadata, "tools", {})
@@ -422,20 +426,17 @@ class ToolVersionEntry:
         if server_dict is not None:
             server_dict["labels"] = labels
 
-    def record_test_result(self, test_target, result):
-        target_results = self.get_test_results_for(test_target)
-
-        cleaned_result = {}
-        test_index = result.get("test_index")
-        for key in ["test_index", "status"]:
-            if key in result:
-                cleaned_result[key] = result.get(key)
-        job = result.get("job", {})
-        for job_key in ["create_time"]:
-            if job_key in job:
-                cleaned_result[f"job_{job_key}"] = job.get(job_key)
-
-        target_results[test_index] = cleaned_result
+    def record_test_results(self, test_target, test_results: TestResults, merge_strategy: TestDataMergeStrategy):
+        results = self.get_test_results()
+        target_results = results.get(test_target)
+        if not target_results:
+            # just set them, no need to worry about how to replace...
+            results[test_target] = test_results.dict()["__root__"]
+        else:
+            # ideally we should compare and choose...
+            old_test_results = TestResults(__root__=target_results)
+            merged_test_results = old_test_results.merged(test_results, merge_strategy)
+            results[test_target] = merged_test_results.dict()["__root__"]
 
     def get_test_results_for(self, test_target) -> Dict:
         results = self.get_test_results()
