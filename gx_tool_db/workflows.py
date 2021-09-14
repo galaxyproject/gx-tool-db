@@ -44,7 +44,7 @@ def _walk_potential_workflow_files(path: str):
         for filename in filenames:
             if filename.startswith("."):
                 continue
-            if filename.containers("test."):
+            if filename.contains("test."):
                 # probably a Galaxy test.
                 continue
             if os.path.splitext(filename)[1] in [".yml", ".yaml", ".ga"]:
