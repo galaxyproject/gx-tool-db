@@ -23,7 +23,6 @@ class Section(GxToolDbBaseModel):
 
 class ServerToolMetadata(GxToolDbBaseModel):
     versions: Optional[List[str]]
-    latest_version: Optional[str]  # TODO: remove...
     sections: Optional[Dict[str, Section]]
 
 
@@ -185,7 +184,6 @@ class ToolShedRepostiry(GxToolDbBaseModel):
 class ToolMetadata(GxToolDbBaseModel):
     servers: Optional[Dict[str, ServerToolMetadata]]
     versions: Optional[Dict[str, ToolVersionMetadata]]
-    latest_version: Optional[str]  # TODO: remove...
     external_labels: Optional[List[str]]
     tool_shed_repository: Optional[ToolShedRepostiry]
 
