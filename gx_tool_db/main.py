@@ -2,7 +2,6 @@
 TODO:
 
 - click or something else to cleanup argparsing...
-- remove latest version from the def, it can just be calculated in realtime
 
 - load in usage data (tool runs, error percent, etc...) from target servers - probably using gxadmin(?)
 """
@@ -34,6 +33,7 @@ from .db import (
     ToolLatestTestResults,
     ToolsMetadata,
     ToolVersionEntry,
+    version_sorted_iterable,
 )
 from .io import (
     csv_reader,
@@ -257,11 +257,13 @@ def export_coverage(config, export_config: ExportSpreadsheetConfig):
         tool_metadata = tool_entry._source_data
 
         # Add coverage columns (if any)
-        latest_version = tool_metadata["latest_version"]
+        latest_version = tool_entry.latest_version
         row = [tool_id, latest_version]
         coverage_servers_dict = {key: "" for key in coverage_servers}
         for server, server_dict in tool_metadata.get("servers", {}).items():
-            coverage_servers_dict[server] = server_dict["latest_version"]
+            versions = version_sorted_iterable(server_dict.get("versions", []))
+            if versions:
+                coverage_servers_dict[server] = versions[0]
         for known_server in coverage_servers:
             row.append(coverage_servers_dict[known_server])
             row.append(spreadsheet_bool(coverage_servers_dict[known_server] == latest_version))
@@ -316,7 +318,7 @@ def export_coverage_versions(config, output_name=OUTPUT_DEFAULT_COVERAGE_VERSION
     for tool_entry in tools_metadata.entries():
         tool_id = tool_entry.tool_id
         tool_metadata = tool_entry._source_data
-        latest_version = tool_metadata["latest_version"]
+        latest_version = tool_entry.latest_version
         for tool_version, tool_version_metadata in tool_metadata.get("versions", {}).items():
             row = [tool_id, tool_version, latest_version]
             known_servers_dict = {key: spreadsheet_bool(False) for key in known_servers}
