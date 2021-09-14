@@ -7,17 +7,31 @@ import os
 from typing import Any, Dict, List, Optional, Union
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 from typing_extensions import Literal
 
 from .config import DEFAULT_DATABASE_PATH, TestDataMergeStrategy
 
 
-class ServerToolMetadata(BaseModel):
+class GxToolDbBaseModel(BaseModel, extra=Extra.forbid):
     pass
 
 
-class TestResult(BaseModel):
+class Section(GxToolDbBaseModel):
+    name: str
+
+
+class ServerToolMetadata(GxToolDbBaseModel):
+    versions: Optional[List[str]]
+    latest_version: Optional[str]  # TODO: remove...
+    sections: Optional[Dict[str, Section]]
+
+
+class ServerToolVersionMetadata(GxToolDbBaseModel):
+    labels: Optional[List[str]]
+
+
+class TestResult(GxToolDbBaseModel):
     status: str
     job_create_time: Optional[str]
 
@@ -47,7 +61,7 @@ class TestResult(BaseModel):
             return other
 
 
-class TestResults(BaseModel):
+class TestResults(GxToolDbBaseModel):
     __root__: Dict[int, TestResult]
 
     @staticmethod
@@ -157,24 +171,32 @@ class TestResults(BaseModel):
         return None
 
 
-class ToolVersionMetadata(BaseModel):
+class ToolVersionMetadata(GxToolDbBaseModel):
     test_results: Optional[Dict[str, TestResults]]
+    servers: Optional[Dict[str, ServerToolVersionMetadata]]
 
 
-class ToolMetadata(BaseModel):
+class ToolShedRepostiry(GxToolDbBaseModel):
+    owner: str
+    tool_shed: str
+    name: str
+
+
+class ToolMetadata(GxToolDbBaseModel):
     servers: Optional[Dict[str, ServerToolMetadata]]
     versions: Optional[Dict[str, ToolVersionMetadata]]
-    latest_version: Optional[str]
+    latest_version: Optional[str]  # TODO: remove...
     external_labels: Optional[List[str]]
+    tool_shed_repository: Optional[ToolShedRepostiry]
 
 
-class ToolSectionLabel(BaseModel):
+class ToolSectionLabel(GxToolDbBaseModel):
     model_class: Literal['ToolSectionLabel']
     id: str
     text: str
 
 
-class ToolSection(BaseModel):
+class ToolSection(GxToolDbBaseModel):
     model_class: Literal['ToolSection']
     id: str
     name: str
@@ -186,11 +208,11 @@ IntegratedPanelSkeletonItems = Union[
 ]
 
 
-class ToolPanelSkeleton(BaseModel):
+class ToolPanelSkeleton(GxToolDbBaseModel):
     __root__: List[IntegratedPanelSkeletonItems]
 
 
-class ToolDatabase(BaseModel):
+class ToolDatabase(GxToolDbBaseModel):
     version: Literal['1.0']
     tools: Optional[Dict[str, ToolMetadata]]
     integrated_panels: Optional[Dict[str, ToolPanelSkeleton]]
