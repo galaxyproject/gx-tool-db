@@ -38,7 +38,14 @@ def _parse_tool_ids_from_file(path: str) -> Set[str]:
 
 
 def _walk_potential_workflow_files(path: str):
-    for (dirpath, _, filenames) in os.walk(path):
+    for (dirpath, dirs, filenames) in os.walk(path):
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+
         for filename in filenames:
+            if filename.startswith("."):
+                continue
+            if filename.containers("test."):
+                # probably a Galaxy test.
+                continue
             if os.path.splitext(filename)[1] in [".yml", ".yaml", ".ga"]:
                 yield os.path.join(dirpath, filename)
