@@ -3,7 +3,6 @@ TODO:
 
 - click or something else to cleanup argparsing...
 - remove latest version from the def, it can just be calculated in realtime
-- test case for subworkflows
 
 - load in usage data (tool runs, error percent, etc...) from target servers - probably using gxadmin(?)
 """

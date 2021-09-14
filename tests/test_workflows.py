@@ -1,5 +1,5 @@
 from gx_tool_db.workflows import parse_tool_ids
-from ._data import DATA_DIRECTORY, EXAMPLE_WORKFLOW_1
+from ._data import DATA_DIRECTORY, EXAMPLE_WORKFLOW_1, EXAMPLE_WORKFLOW_NESTED
 
 
 def test_parse_ids():
@@ -12,3 +12,8 @@ def test_parse_ids():
     assert len(more_tool_ids) > len(tool_ids)
     assert "toolshed.g2.bx.psu.edu/repos/iuc/samtools_view/samtools_view/1.9+galaxy2" in more_tool_ids
     assert "toolshed.g2.bx.psu.edu/repos/bgruening/split_file_to_collection/split_file_to_collection/0.5.0" in more_tool_ids
+
+
+def test_subworkflows():
+    tool_ids = parse_tool_ids(EXAMPLE_WORKFLOW_NESTED)
+    assert "__BUILD_LIST__" in tool_ids
