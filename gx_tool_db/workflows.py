@@ -64,7 +64,7 @@ def _walk_potential_workflow_files(path: str):
         for filename in filenames:
             if filename == "data-library.yaml":
                 continue
-            if "test." in filename:
+            if "test." in filename or "tests." in filename:
                 # probably a Galaxy test.
                 continue
             yield os.path.join(dirpath, filename)
