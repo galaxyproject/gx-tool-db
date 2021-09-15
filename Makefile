@@ -7,7 +7,7 @@ VENV?=.venv
 # Source virtualenv to execute command (flake8, sphinx, twine, etc...)
 IN_VENV=if [ -f $(VENV)/bin/activate ]; then . $(VENV)/bin/activate; fi;
 # TODO: add this upstream as a remote if it doesn't already exist.
-UPSTREAM?=galaxyproject
+UPSTREAM?=origin
 SOURCE_DIR?=gx_tool_db
 BUILD_SCRIPTS_DIR=scripts
 DEV_RELEASE?=0
@@ -95,7 +95,7 @@ new-version: ## Mint a new version
 release-local: commit-version release-aritfacts new-version
 
 push-release: ## Push a tagged release to github
-	git push $(UPSTREAM) master
+	git push $(UPSTREAM) main
 	git push --tags $(UPSTREAM)
 
 release: release-local push-release ## package, review, and upload a release
