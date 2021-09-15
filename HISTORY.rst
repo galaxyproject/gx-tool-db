@@ -6,7 +6,7 @@ History
 .. to_doc
 
 ---------------------
-0.3.0.dev0
+0.3.0 (2021-09-15)
 ---------------------
 
 * Import and allow export of more data from the initial server requests.
