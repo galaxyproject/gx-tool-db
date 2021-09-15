@@ -9,7 +9,7 @@ History
 0.3.0.dev0
 ---------------------
 
-    
+* Import and allow export of more data from the initial server requests.
 
 ---------------------
 0.2.0 (2021-09-15)
