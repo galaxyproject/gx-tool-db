@@ -42,9 +42,9 @@ Start by bootstrapping data from a few servers:
 
     $ mkdir my_tool_db
     $ cd my_tool_db
-    $ gx-tool-db import-server org
-    $ gx-tool-db import-server eu
-    $ gx-tool-db import-server test
+    $ gx-tool-db import-server --server org
+    $ gx-tool-db import-server --server eu
+    $ gx-tool-db import-server --server test
 
 Next we can use the bootstrapped data to dump information about the latest
 version of all tools across all servers or at individual servers. This data
@@ -140,4 +140,13 @@ either all test data labels or specified ones.
     $ gx-tool-db export-tabular --all-tests --label really_cool --label meh --output to_curate_all_the_tests.tsv
     $ gx-tool-db export-tabular --tests anvil --label really_cool --label meh --output to_curate_only_anvil_tests.tsv
 
+Metadata about how tools are used within `Galaxy Training Network`_ tutorials can be loaded as well.
+
+    $ git clone https://github.com/galaxyproject/training-material.git
+    $ gx-tool-db import-trainings training-material
+
+Columns for these tutorials and topics referencing tools can be then included with ``export-tabular`` with the
+``--training-topcis`` and ``--training-tutorials`` flags respectively.
+
 .. _Galaxy: https://galaxyproject.org/
+.. _Galaxy Training Network: https://training.galaxyproject.org/
