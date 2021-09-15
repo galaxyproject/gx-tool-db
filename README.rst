@@ -142,6 +142,8 @@ either all test data labels or specified ones.
 
 Metadata about how tools are used within `Galaxy Training Network`_ tutorials can be loaded as well.
 
+::
+
     $ git clone https://github.com/galaxyproject/training-material.git
     $ gx-tool-db import-trainings training-material
 
