@@ -208,24 +208,24 @@ def export_coverage(config, export_config: ExportSpreadsheetConfig):
     tools_metadata = ToolsMetadata(config.metadata_file)
 
     # Assemble header...
-
-    # Assemble coverage headers...
-    if export_config.coverage is ALL_SERVER_LABELS:
-        coverage_servers = tools_metadata.known_servers()
-    else:
-        coverage_servers = cast(List[str], export_config.coverage)
-
     header = [COLUMN_HEADER_TOOL_ID, COLUMN_HEADER_LATEST_VERSION]
-    for server in coverage_servers:
-        header.append(f"{server} Latest Version")
-        header.append(f"{server} Is Latest")
 
+    # Assemble training headers columns...
     if export_config.include_training_topics:
         header.append("Training Topics")
     if export_config.include_training_tutorials:
         header.append("Training Tutorials")
 
-    # Assemble test headers...
+    # Assemble coverage headers columns...
+    if export_config.coverage is ALL_SERVER_LABELS:
+        coverage_servers = tools_metadata.known_servers()
+    else:
+        coverage_servers = cast(List[str], export_config.coverage)
+    for server in coverage_servers:
+        header.append(f"{server} Latest Version")
+        header.append(f"{server} Is Latest")
+
+    # Assemble test headers columns...
     if export_config.tests is ALL_TEST_LABELS:
         test_keys = tools_metadata.test_keys()
     else:

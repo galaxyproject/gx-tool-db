@@ -419,7 +419,7 @@ class ToolEntry:
 
     @property
     def latest_version(self) -> Optional[str]:
-        keys = _version_sorted_keys(self._source_data.get("version", {}))
+        keys = _version_sorted_keys(self._source_data.get("versions", {}))
         return keys[0] if keys else None
 
     @property
