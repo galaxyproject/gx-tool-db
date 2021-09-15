@@ -1,9 +1,4 @@
-"""
-TODO:
-
-- click or something else to cleanup argparsing...
-
-- load in usage data (tool runs, error percent, etc...) from target servers - probably using gxadmin(?)
+"""Entry point module and commands for gx-tool-db.
 """
 import argparse
 import contextlib
@@ -225,6 +220,11 @@ def export_coverage(config, export_config: ExportSpreadsheetConfig):
         header.append(f"{server} Latest Version")
         header.append(f"{server} Is Latest")
 
+    if export_config.include_training_topics:
+        header.append("Training Topics")
+    if export_config.include_training_tutorials:
+        header.append("Training Tutorials")
+
     # Assemble test headers...
     if export_config.tests is ALL_TEST_LABELS:
         test_keys = tools_metadata.test_keys()
@@ -260,6 +260,14 @@ def export_coverage(config, export_config: ExportSpreadsheetConfig):
         # Add coverage columns (if any)
         latest_version = tool_entry.latest_version
         row = [tool_id, latest_version]
+
+        if export_config.include_training_topics:
+            row.append(",".join(tool_entry.training_topics))
+        if export_config.include_training_tutorials:
+            as_str = ",".join([f"{training.topic}:{training.tutorial}" for training in tool_entry.trainings])
+            row.append(as_str)
+
+        # Add server coverage columns if any...
         coverage_servers_dict = {key: "" for key in coverage_servers}
         for server, server_dict in tool_metadata.get("servers", {}).items():
             versions = version_sorted_iterable(server_dict.get("versions", []))
@@ -405,6 +413,11 @@ def export_label(config, output, label):
         f.write("\n".join(tool_ids))
 
 
+def import_training(config, directory):
+    with _writable_database(config) as tools_metadata:
+        tools_metadata.import_trainings(directory)
+
+
 def arg_parser():
     parser = argparse.ArgumentParser(description="Manage runtime metadata about tools across Galaxy servers")
     parser.add_argument('--tools_metadata', type=str, help='File containing merged tools metadata (YAML)', default=DEFAULT_DATABASE_PATH)
@@ -423,6 +436,12 @@ def arg_parser():
     parser_export_tabular = subparsers.add_parser('export-tabular', help=HELP_EXPORT_COVERAGE)
     add_common_filters(parser_export_tabular)
     parser_export_tabular.add_argument('--output', type=str, help=HELP_ARG_OUTPUT, default=OUTPUT_DEFAULT_SPREADSHEET)
+    parser_export_tabular.add_argument(
+        '--training-topics', help="include column for training topics", action="store_true",
+    )
+    parser_export_tabular.add_argument(
+        '--training-tutorials', help="include column for training topic:tutorial", action="store_true",
+    )
 
     coverage_group = parser_export_tabular.add_mutually_exclusive_group()
     coverage_group.add_argument("--coverage", dest="coverage", action="append", help="", default=[])
@@ -469,11 +488,17 @@ def arg_parser():
     parser_import_test_results.add_argument('input', help='Input to read from')
     parser_import_test_results.add_argument('test_target', help='Target of tool tests')
     parser_import_test_results.add_argument('--merge-strategy', choices=TestDataMergeStrategy.__members__.keys(), default="latest_executed")
+
     parser_clear_test_results = subparsers.add_parser('clear-tests', help='clear test results for target server')
     parser_clear_test_results.add_argument('test_target', help='Target of tool tests')
 
     parser_clear_label = subparsers.add_parser('clear-label', help='clear external label on tools')
     parser_clear_label.add_argument('label', help='Label key for label to clear')
+
+    parser_import_training_materials = subparsers.add_parser(
+        'import-trainings', help='import information about what tools are used by training materials'
+    )
+    parser_import_training_materials.add_argument('training_directory', help='directory containing updated Galaxy training materials')
 
     parser_export_install = subparsers.add_parser('export-install-yaml', help='export tools.yaml file for installation')
     parser_export_install.add_argument('--output', type=str, help="Path to tools YAML file to create", default="tools.yaml")
@@ -568,6 +593,9 @@ def main(argv=None):
         labels = args.label
         assert labels
         label_workflow_tools(config, args.input, labels)
+    elif command == "import-trainings":
+        directory = args.training_directory
+        import_training(config, directory)
     elif command == "_google-export":
         google_export(args.input, args.sheet_id)
     elif command == "_google-import":

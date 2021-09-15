@@ -15,6 +15,26 @@ SERVER_LABELS = {
     TEST_URL: 'test',
     USEGALAXY_EU_URL: 'eu',
     USEGALAXY_AU_URL: 'au',
+    "https://clipseq.usegalaxy.eu/": "cliqseq_eu",
+    "https://humancellatlas.usegalaxy.eu/": "humancellatlas_eu",
+    "https://metabolomics.usegalaxy.eu/": "metabolomics_eu",
+    "https://ml.usegalaxy.eu/": "ml_eu",
+    "https://proteomics.usegalaxy.eu/": "proteomics_eu",
+    "https://annotation.usegalaxy.eu/": "annotation_eu",
+    "https://cheminformatics.usegalaxy.eu/": "cheminformatics_eu",
+    "https://covid19.usegalaxy.eu/": "covid19_eu",
+    "https://graphclust.usegalaxy.eu/": "graphclust_eu",
+    "https://imaging.usegalaxy.eu/": "imaging_eu",
+    "https://metagenomics.usegalaxy.eu/": "metagenomics_eu",
+    "https://nanopore.usegalaxy.eu/": "nanopore_eu",
+    "https://rna.usegalaxy.eu/": "rna_eu",
+    "https://assembly.usegalaxy.eu/": "assembly_eu",
+    "https://climate.usegalaxy.eu/": "climate_eu",
+    "https://ecology.usegalaxy.eu/": "ecology_eu",
+    "https://hicexplorer.usegalaxy.eu/": "hicexplorer_eu",
+    "https://microbiome.usegalaxy.eu/": "microbiome_eu",
+    "https://plants.usegalaxy.eu/": "plants_eu",
+    "https://singlecell.usegalaxy.eu/": "singlecell_eu",
 }
 
 URLS_BY_LABEL = {v: k for (k, v) in SERVER_LABELS.items()}
@@ -107,3 +127,5 @@ class ExportSpreadsheetConfig(FilterArguments):
             self.labels = args.labels
         self.require_labels = args.require_labels
         self.exclude_labels = args.exclude_labels
+        self.include_training_topics = args.training_topics
+        self.include_training_tutorials = args.training_tutorials
