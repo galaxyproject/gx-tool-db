@@ -1,9 +1,4 @@
-"""
-TODO:
-
-- click or something else to cleanup argparsing...
-
-- load in usage data (tool runs, error percent, etc...) from target servers - probably using gxadmin(?)
+"""Entry point module and commands for gx-tool-db.
 """
 import argparse
 import contextlib
