@@ -15,7 +15,7 @@ History
 0.2.0 (2021-09-15)
 ---------------------
 
-    
+* Various enhancements - version database, recursive import of metadata, add training metadata to model, etc..
 
 ---------------------
 0.1.0 (2021-09-13)
