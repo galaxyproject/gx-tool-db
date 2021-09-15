@@ -170,9 +170,18 @@ class TestResults(GxToolDbBaseModel):
         return None
 
 
+class TrainingMetadata(GxToolDbBaseModel):
+    topic: str
+    tutorial: str
+
+    def __hash__(self):
+        return hash((type(self),) + tuple(self.__dict__.values()))
+
+
 class ToolVersionMetadata(GxToolDbBaseModel):
     test_results: Optional[Dict[str, TestResults]]
     servers: Optional[Dict[str, ServerToolVersionMetadata]]
+    trainings: Optional[List[TrainingMetadata]]
 
 
 class ToolShedRepostiry(GxToolDbBaseModel):

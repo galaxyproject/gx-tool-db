@@ -8,8 +8,8 @@ import yaml
 
 from .config import FilterArguments, Server, TestDataMergeStrategy, ViewDefintion
 from .io import warn
-from .models import load_from_dict, TestResults
-
+from .models import load_from_dict, TestResults, TrainingMetadata
+from .workflows import parse_tools
 
 DATABASE_VERSION = "1.0"
 
@@ -272,6 +272,31 @@ class ToolsMetadata:
                 section_tools.add(tool_entry.tool_id)
         return sections_tools
 
+    def import_trainings(self, training_directory: str):
+        topics_directory = os.path.join(training_directory, "topics")
+        for topic in os.listdir(topics_directory):
+            topic_directory = os.path.join(topics_directory, topic)
+            tutorials_directory = os.path.join(topic_directory, "tutorials")
+            if not os.path.exists(tutorials_directory):
+                continue
+            tutorials = os.listdir(tutorials_directory)
+            for tutorial in tutorials:
+                tutorial_directory = os.path.join(tutorials_directory, tutorial)
+                workflow_tools = parse_tools(tutorial_directory)
+                for (raw_tool_id, tool_version) in workflow_tools:
+                    tool_id = _versionless_tool_id(raw_tool_id)
+                    if tool_version is None and "repos" in raw_tool_id:
+                        # TODO: workflow missing version - why?
+                        tool_version = raw_tool_id.rsplit("/", 1)[1]
+
+                    tool_entry = self.get_entry_for(tool_id)
+                    if not tool_version:
+                        warn(f"No tool_version for tool_id {tool_id} found in workflow and cannot infer from tool ID, skipping training entry")
+                        continue
+
+                    tool_version_entry = tool_entry.get_version_entry(tool_version)
+                    tool_version_entry.record_training(TrainingMetadata(topic=topic, tutorial=tutorial))
+
     # YAGNI
     # def entries_with_label(self, label):
     #     for tool_entry in self.entries(filter_criteria=filter_criteria):
@@ -397,6 +422,20 @@ class ToolEntry:
         keys = _version_sorted_keys(self._source_data.get("version", {}))
         return keys[0] if keys else None
 
+    @property
+    def trainings(self) -> Set[TrainingMetadata]:
+        trainings: Set[TrainingMetadata] = set()
+        for version in self.get_version_entries():
+            trainings.update(version.trainings)
+        return trainings
+
+    @property
+    def training_topics(self) -> Set[str]:
+        topics: Set[str] = set()
+        for training in self.trainings:
+            topics.add(training.topic)
+        return topics
+
 
 class ToolVersionEntry:
 
@@ -425,6 +464,18 @@ class ToolVersionEntry:
         server_dict = self._server_dict()
         if server_dict is not None:
             server_dict["labels"] = labels
+
+    def record_training(self, training: TrainingMetadata):
+        trainings = _ensure_key(self._source_data, "trainings", [])
+        trainings.append(training.dict())
+
+    @property
+    def trainings(self):
+        trainings: Set[TrainingMetadata] = set()
+        raw_trainings = _ensure_key(self._source_data, "trainings", [])
+        for raw_training in raw_trainings:
+            trainings.add(TrainingMetadata(**raw_training))
+        return trainings
 
     def record_test_results(self, test_target, test_results: TestResults, merge_strategy: TestDataMergeStrategy):
         results = self.get_test_results()

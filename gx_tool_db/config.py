@@ -127,3 +127,5 @@ class ExportSpreadsheetConfig(FilterArguments):
             self.labels = args.labels
         self.require_labels = args.require_labels
         self.exclude_labels = args.exclude_labels
+        self.include_training_topics = args.training_topics
+        self.include_training_tutorials = args.training_tutorials

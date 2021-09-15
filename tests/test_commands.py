@@ -12,6 +12,7 @@ from ._data import (
     COOL_LABELS_CSV,
     DEPRECATED_TOOLS,
     EXAMPLE_WORKFLOW_1,
+    MOCK_TRAINING_DIRECTORY,
     RESULTS_JSON,
 )
 
@@ -161,6 +162,15 @@ def test_label_workflow_tools(usegalaxy_metadata_dir):
     main(["export-label", "iwc_required_tools.txt", "iwc_required"])
     all_tool_ids = Path("iwc_required_tools.txt").read_text("utf-8")
     assert "toolshed.g2.bx.psu.edu/repos/iuc/samtools_view/samtools_view" in all_tool_ids
+
+
+def test_import_trainings(usegalaxy_metadata_dir):
+    main(["import-trainings", MOCK_TRAINING_DIRECTORY])
+    main(["export-tabular", "--output", "foo.tsv", "--training-topics", "--training-tutorials"])
+
+    with open("foo.tsv", "r") as f:
+        start = f.read(1024)
+    assert start.startswith("Tool ID\tLatest Version\tTraining Topics\tTraining Tutorials")
 
 
 def verify_usegalaxy_tool_panel_skeleton(tool_database: ToolDatabase):
