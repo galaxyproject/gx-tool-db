@@ -301,7 +301,7 @@ def export_coverage(config, export_config: ExportSpreadsheetConfig):
                     status = test_result.get("status")
                     if status == "success":
                         passed += 1
-                    elif status in ["failed", "error"]:
+                    elif status in ["failed", "error", "failure"]:
                         failed += 1
                     else:
                         warn(f"Unknown test result status encountered {status}")
