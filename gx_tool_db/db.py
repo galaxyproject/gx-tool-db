@@ -1,7 +1,7 @@
 import os
 import shutil
 import tempfile
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, Iterator, List, Optional, Set
 
 import packaging.version
 import yaml
@@ -89,7 +89,7 @@ class ToolsMetadata:
                 test_keys.update(test_results.keys())
         return list(test_keys)
 
-    def entries(self, server: Optional[Server] = None, filter_criteria: FilterCriteria = None):
+    def entries(self, server: Optional[Server] = None, filter_criteria: FilterCriteria = None) -> Iterator['ToolEntry']:
         for tool_id, tool_metadata in self.walk_tools_dict(filter_criteria):
             yield ToolEntry(tool_metadata, tool_id, server)
 
@@ -436,6 +436,43 @@ class ToolEntry:
             topics.add(training.topic)
         return topics
 
+    @property
+    def name(self) -> Optional[str]:
+        return self._newest_version_with_metadata("name")
+
+    @property
+    def description(self) -> Optional[str]:
+        return self._newest_version_with_metadata("description")
+
+    @property
+    def model_class(self) -> Optional[str]:
+        return self._newest_version_with_metadata("model_class")
+
+    @property
+    def tool_shed(self) -> Optional[str]:
+        return self._tool_shed_prop("tool_shed")
+
+    @property
+    def repository_name(self) -> Optional[str]:
+        return self._tool_shed_prop("name")
+
+    @property
+    def repository_owner(self) -> Optional[str]:
+        return self._tool_shed_prop("owner")
+
+    def _tool_shed_prop(self, key: str) -> Optional[str]:
+        repo_dict = self._source_data.get("tool_shed_repository")
+        if repo_dict:
+            return repo_dict.get(key)
+        return None
+
+    def _newest_version_with_metadata(self, key):
+        for tool_version_entry in self.get_version_entries():
+            value = tool_version_entry._source_data.get(key)
+            if value:
+                return value
+        return None
+
 
 class ToolVersionEntry:
 
@@ -497,6 +534,28 @@ class ToolVersionEntry:
     def get_test_results(self):
         results = _ensure_key(self._source_data, "test_results", {})
         return results
+
+    def record_metadata(
+        self,
+        name: str,
+        description: Optional[str] = None,
+        xrefs: Optional[List[str]] = None,
+        edam_operations: Optional[List[str]] = None,
+        edam_topics: Optional[List[str]] = None,
+        model_class: Optional[str] = None,
+    ):
+        data = self._source_data
+        data["name"] = name
+        if description:
+            data["description"] = description
+        if xrefs:
+            data["xrefs"] = xrefs
+        if edam_operations:
+            data["edam_operations"] = edam_operations
+        if edam_topics:
+            data["edam_topics"] = edam_topics
+        if model_class:
+            data["model_class"] = model_class
 
 
 class ToolLatestTestResults:

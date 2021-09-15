@@ -111,6 +111,15 @@ class ExportSpreadsheetConfig(FilterArguments):
     tests: Union[List[str], Type[AllData]]
     labels: Union[List[str], Type[AllData]]
 
+    include_training_topics: bool = False
+    include_training_tutorials: bool = False
+    include_name: bool = False
+    include_description: bool = False
+    include_model_class: bool = False
+    include_tool_shed: bool = False
+    include_repository_owner: bool = False
+    include_repository_name: bool = False
+
     def __init__(self, args):
         self.output = args.output
         if args.coverage == "*":
@@ -129,3 +138,10 @@ class ExportSpreadsheetConfig(FilterArguments):
         self.exclude_labels = args.exclude_labels
         self.include_training_topics = args.training_topics
         self.include_training_tutorials = args.training_tutorials
+
+        self.include_name = args.name
+        self.include_description = args.description
+        self.include_model_class = args.model_class
+        self.include_tool_shed = args.tool_shed
+        self.include_repository_owner = args.repository_owner
+        self.include_repository_name = args.repository_name
