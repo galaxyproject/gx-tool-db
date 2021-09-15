@@ -1,5 +1,6 @@
 """Configuration related constants and objects.
 """
+from enum import Enum
 from typing import List, Optional, Type, Union
 
 DEFAULT_DATABASE_PATH = "tools_metadata.yml"
@@ -15,6 +16,8 @@ SERVER_LABELS = {
     USEGALAXY_EU_URL: 'eu',
     USEGALAXY_AU_URL: 'au',
 }
+
+URLS_BY_LABEL = {v: k for (k, v) in SERVER_LABELS.items()}
 
 PUBLIC_SERVERS = [
     USEGALAXY_ORG_URL,
@@ -70,6 +73,16 @@ class AllData:
 ALL_SERVER_LABELS = AllData()
 ALL_TEST_LABELS = AllData()
 ALL_LABELS = AllData()
+
+
+class TestDataMergeStrategy(str, Enum):
+    latest_added = 'latest_added'
+    latest_executed = 'latest_executed'
+    best = 'best'
+
+    latest_added_indexwise = 'latest_added_indexwise'
+    latest_executed_indexwise = 'latest_executed_indexwise'
+    best_indexwise = 'best_indexwise'
 
 
 class ExportSpreadsheetConfig(FilterArguments):

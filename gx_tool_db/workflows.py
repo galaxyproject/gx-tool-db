@@ -3,7 +3,7 @@ from typing import Set
 
 from gxformat2.normalize import steps_normalized
 
-from .io import warn
+from .io import repository_walk, warn
 
 
 def parse_tool_ids(path: str) -> Set[str]:
@@ -28,17 +28,27 @@ def _parse_tool_ids_from_file(path: str) -> Set[str]:
         raise
 
     tool_ids = set()
-    for step in steps:
-        step_type = step.get("type") or "tool"
-        if step_type != "tool":
-            continue  # TODO: subworkflows...
-        tool_id = step.get("tool_id")
-        tool_ids.add(tool_id)
+
+    def collect_from_steps(steps):
+        for step in steps:
+            step_type = step.get("type") or "tool"
+            if (step_type not in ["tool"]) and ("run" not in step):
+                continue
+            tool_id = step.get("tool_id")
+            if tool_id:
+                tool_ids.add(tool_id)
+            else:
+                run = step.get("run")
+                collect_from_steps(run.get("steps"))
+
+    collect_from_steps(steps)
     return tool_ids
 
 
 def _walk_potential_workflow_files(path: str):
-    for (dirpath, _, filenames) in os.walk(path):
+    for (dirpath, _, filenames) in repository_walk(path, extensions=[".yml", ".yaml", ".ga"]):
         for filename in filenames:
-            if os.path.splitext(filename)[1] in [".yml", ".yaml", ".ga"]:
-                yield os.path.join(dirpath, filename)
+            if "test." in filename:
+                # probably a Galaxy test.
+                continue
+            yield os.path.join(dirpath, filename)

@@ -8,3 +8,4 @@ COOL_LABELS_CSV = os.path.join(DATA_DIRECTORY, "cool_labels.csv")
 #  https://raw.githubusercontent.com/almahmoud/anvil-misc/master/reports/anvil-production/tool-tests/gxy-auto-06-26-04-08-34-1/results.json
 RESULTS_JSON = os.path.join(DATA_DIRECTORY, "results.json")
 EXAMPLE_WORKFLOW_1 = os.path.join(DATA_DIRECTORY, "pe-wgs-variation.ga")
+EXAMPLE_WORKFLOW_NESTED = os.path.join(DATA_DIRECTORY, "subworkflow.ga")

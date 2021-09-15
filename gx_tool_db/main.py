@@ -2,19 +2,15 @@
 TODO:
 
 - click or something else to cleanup argparsing...
-- remove latest version from the def, it can just be calculated in realtime
-- test case for subworkflows
 
 - load in usage data (tool runs, error percent, etc...) from target servers - probably using gxadmin(?)
 """
 import argparse
-import io
-import json
+import contextlib
 import sys
-from typing import Any, cast, List, Optional
+from typing import Any, cast, Dict, List, Optional
 
 import requests
-import urllib3
 import yaml
 
 from .config import (
@@ -27,6 +23,8 @@ from .config import (
     FilterArguments,
     PUBLIC_SERVERS,
     Server,
+    TestDataMergeStrategy,
+    URLS_BY_LABEL,
     USEGALAXY_ORG_URL,
     ViewDefintion,
 )
@@ -36,12 +34,18 @@ from .db import (
     ToolLatestTestResults,
     ToolsMetadata,
     ToolVersionEntry,
+    version_sorted_iterable,
 )
 from .io import (
     csv_reader,
     csv_writer,
+    open_uri,
     warn,
 )
+from .models import (
+    TestResults,
+)
+from .results import result_collections
 from .sheets import (
     download_sheet_to_list,
     download_sheet_to_path,
@@ -70,77 +74,47 @@ class Config:
         self.metadata_file = metadata_file
 
 
-class TestResults:
-
-    def __init__(self, path):
-        results = {}
-        with _open_uri(path) as f:
-            results = json.load(f)
-            tests = results["tests"]
-
-        results_by_id = {}
-        for result in tests:
-            if not result.get("has_data"):
-                continue
-            result_data = result.get("data")
-            tool_id = result_data['tool_id']
-            if tool_id not in results_by_id:
-                results_by_id[tool_id] = []
-            results_by_id[tool_id].append(result_data)
-        self.results_by_id = results_by_id
-
-    def get_results_for_tool_id(self, tool_id):
-        results_by_id = self.results_by_id
-        if tool_id in results_by_id:
-            return results_by_id[tool_id]
-        else:
-            tool_id = tool_id.rsplit("/", 1)[0]
-            return results_by_id.get(tool_id)
-
-
 def bootstrap_tools_metadata(config: Config, server: Server):
-    tools_metadata = ToolsMetadata(config.metadata_file)
+    with _writable_database(config) as tools_metadata:
+        out_panel = tools_request(server=server, in_panel=False)
+        in_panel = tools_request(server=server, in_panel=True)
 
-    out_panel = tools_request(server=server, in_panel=False)
-    in_panel = tools_request(server=server, in_panel=True)
+        for tool in out_panel:
+            tool_entry = tools_metadata.get_entry_for_api_value(tool, server)
+            tool_version = tool["version"]
+            tool_version_entry = tool_entry.get_version_entry(tool_version)
+            repo = tool.get("tool_shed_repository", None)
+            tool_entry.record_ts_repo(repo)
+            labels = tool['labels']
+            tool_version_entry.record_labels(labels)
 
-    for tool in out_panel:
-        tool_entry = tools_metadata.get_entry_for_api_value(tool, server)
-        tool_version = tool["version"]
-        tool_version_entry = tool_entry.get_version_entry(tool_version)
-        repo = tool.get("tool_shed_repository", None)
-        tool_entry.record_ts_repo(repo)
-        labels = tool['labels']
-        tool_version_entry.record_labels(labels)
-
-    for entry in in_panel:
-        if entry["model_class"] != "ToolSection":
-            continue
-        section_id = entry["id"]
-        section_name = entry["name"]
-        for section_elem in entry.get("elems", []):
-            if section_elem["model_class"] != "Tool":
+        for entry in in_panel:
+            if entry["model_class"] != "ToolSection":
                 continue
-            tool_entry = tools_metadata.get_entry_for_api_value(section_elem, server)
-            tool_entry.record_section(section_id, section_name)
+            section_id = entry["id"]
+            section_name = entry["name"]
+            for section_elem in entry.get("elems", []):
+                if section_elem["model_class"] != "Tool":
+                    continue
+                tool_entry = tools_metadata.get_entry_for_api_value(section_elem, server)
+                tool_entry.record_section(section_id, section_name)
 
-    integrated_panel_skeleton = []
-    for entry in in_panel:
-        model_class = entry.get("model_class")
-        if model_class not in ["ToolSectionLabel", "ToolSection"]:
-            continue
-        element = {
-            "model_class": model_class,
-            "id": entry["id"],
-        }
-        if model_class == "ToolSectionLabel":
-            element["text"] = entry["text"]
-        elif model_class == "ToolSection":
-            element["name"] = entry["name"]
-        integrated_panel_skeleton.append(element)
+        integrated_panel_skeleton = []
+        for entry in in_panel:
+            model_class = entry.get("model_class")
+            if model_class not in ["ToolSectionLabel", "ToolSection"]:
+                continue
+            element = {
+                "model_class": model_class,
+                "id": entry["id"],
+            }
+            if model_class == "ToolSectionLabel":
+                element["text"] = entry["text"]
+            elif model_class == "ToolSection":
+                element["name"] = entry["name"]
+            integrated_panel_skeleton.append(element)
 
-    tools_metadata.record_panel_skeleton(integrated_panel_skeleton, server)
-    tools_metadata.write()
+        tools_metadata.record_panel_skeleton(integrated_panel_skeleton, server)
 
 
 def tools_request(server: Server, in_panel=False):
@@ -184,49 +158,54 @@ def import_tabular(config, path, labels):
     header_index = {}
     for i, header_value in enumerate(header):
         header_index[header_value] = i
-    tools_metadata = ToolsMetadata(config.metadata_file)
-    for data in rest:
-        tool_id_index = header_index[COLUMN_HEADER_TOOL_ID]
-        tool_id = data[tool_id_index]
-        tool_entry = tools_metadata.get_entry_for(tool_id)
-        for label in labels:
-            label_index = header_index[label]
-            label_value = data[label_index]
-            present = None
-            if str(label_value).lower() in ["none", "null", "", "0", "false"]:
-                present = False
-            elif str(label_value).lower() in ["1", "true"]:
-                present = True
-            if present is None:
-                raise Exception(f"Do not know how to process label value {label_value} from spreadsheet")
-            tool_entry.record_external_label(label, present=present)
-    tools_metadata.write()
+    with _writable_database(config) as tools_metadata:
+        for data in rest:
+            tool_id_index = header_index[COLUMN_HEADER_TOOL_ID]
+            tool_id = data[tool_id_index]
+            tool_entry = tools_metadata.get_entry_for(tool_id)
+            for label in labels:
+                label_index = header_index[label]
+                label_value = data[label_index]
+                present = None
+                if str(label_value).lower() in ["none", "null", "", "0", "false"]:
+                    present = False
+                elif str(label_value).lower() in ["1", "true"]:
+                    present = True
+                if present is None:
+                    raise Exception(f"Do not know how to process label value {label_value} from spreadsheet")
+                tool_entry.record_external_label(label, present=present)
 
 
 def label_workflow_tools(config: Config, input: str, labels: List[str]):
     tool_ids = parse_tool_ids(input)
-    tools_metadata = ToolsMetadata(config.metadata_file)
-    for raw_tool_id in tool_ids:
-        tool_id = _versionless_tool_id(raw_tool_id)
-        tool_entry = tools_metadata.get_entry_for(tool_id)
-        if tool_entry is None:
-            warn(f"Failed to find entry for {tool_id} while attempting to label workflow tools")
-        for label in labels:
-            tool_entry.record_external_label(label)
-    tools_metadata.write()
-
-
-def import_test_results(config, path, test_target):
-    test_results = TestResults(path)
-    tools_metadata = ToolsMetadata(config.metadata_file)
-    for tool_id, results in test_results.results_by_id.items():
-        for result in results:
-            tool_version = result["tool_version"]
+    with _writable_database(config) as tools_metadata:
+        for raw_tool_id in tool_ids:
+            tool_id = _versionless_tool_id(raw_tool_id)
             tool_entry = tools_metadata.get_entry_for(tool_id)
-            tool_version_entry = tool_entry.get_version_entry(tool_version)
-            tool_version_entry.record_test_result(test_target, result)
+            if tool_entry is None:
+                warn(f"Failed to find entry for {tool_id} while attempting to label workflow tools")
+            for label in labels:
+                tool_entry.record_external_label(label)
 
-    tools_metadata.write()
+
+def import_test_results(config, uri, test_target, merge_strategy: TestDataMergeStrategy):
+    with _writable_database(config) as tools_metadata:
+        for test_result_collection in result_collections(uri):
+            test_results = test_result_collection.results
+            for tool_id, results in test_results.results_by_id.items():
+                by_versions: Dict[str, List[Dict[str, Any]]] = {}
+                for result in results:
+                    tool_version = result["tool_version"]
+                    if tool_version not in by_versions:
+                        by_versions[tool_version] = []
+
+                    by_versions[tool_version].append(result)
+
+                for tool_version, tool_version_results in by_versions.items():
+                    tool_entry = tools_metadata.get_entry_for(tool_id)
+                    tool_version_entry = tool_entry.get_version_entry(tool_version)
+                    test_results = TestResults.from_test_output_dicts(tool_version_results)
+                    tool_version_entry.record_test_results(test_target, test_results, merge_strategy)
 
 
 def export_coverage(config, export_config: ExportSpreadsheetConfig):
@@ -279,11 +258,13 @@ def export_coverage(config, export_config: ExportSpreadsheetConfig):
         tool_metadata = tool_entry._source_data
 
         # Add coverage columns (if any)
-        latest_version = tool_metadata["latest_version"]
+        latest_version = tool_entry.latest_version
         row = [tool_id, latest_version]
         coverage_servers_dict = {key: "" for key in coverage_servers}
         for server, server_dict in tool_metadata.get("servers", {}).items():
-            coverage_servers_dict[server] = server_dict["latest_version"]
+            versions = version_sorted_iterable(server_dict.get("versions", []))
+            if versions:
+                coverage_servers_dict[server] = versions[0]
         for known_server in coverage_servers:
             row.append(coverage_servers_dict[known_server])
             row.append(spreadsheet_bool(coverage_servers_dict[known_server] == latest_version))
@@ -338,7 +319,7 @@ def export_coverage_versions(config, output_name=OUTPUT_DEFAULT_COVERAGE_VERSION
     for tool_entry in tools_metadata.entries():
         tool_id = tool_entry.tool_id
         tool_metadata = tool_entry._source_data
-        latest_version = tool_metadata["latest_version"]
+        latest_version = tool_entry.latest_version
         for tool_version, tool_version_metadata in tool_metadata.get("versions", {}).items():
             row = [tool_id, tool_version, latest_version]
             known_servers_dict = {key: spreadsheet_bool(False) for key in known_servers}
@@ -355,15 +336,13 @@ def spreadsheet_bool(val):
 
 
 def clear_test_results(config, test_target):
-    tools_metadata = ToolsMetadata(config.metadata_file)
-    tools_metadata.clear_test_results(test_target)
-    tools_metadata.write()
+    with _writable_database(config) as tools_metadata:
+        tools_metadata.clear_test_results(test_target)
 
 
 def clear_label(config, label_key):
-    tools_metadata = ToolsMetadata(config.metadata_file)
-    tools_metadata.clear_label(label_key)
-    tools_metadata.write()
+    with _writable_database(config) as tools_metadata:
+        tools_metadata.clear_label(label_key)
 
 
 def google_export(input, sheet_id):
@@ -385,7 +364,6 @@ def export_panel_view(config: Config, server: str, view_def: ViewDefintion):
     tools_metadata = ToolsMetadata(config.metadata_file)
     view_dict = tools_metadata.panel_view_dict(server, view_def)
     output_path = view_def.effective_output
-    print(output_path)
     with open(output_path, "w") as f:
         yaml.safe_dump(view_dict, f)
 
@@ -401,7 +379,7 @@ def import_labels(config, input):
 
 
 def import_label(config, input, label):
-    with _open_uri(input) as f:
+    with open_uri(input) as f:
         contents = f.read()
     tool_ids = [line.strip() for line in contents.split("\n")]
     tool_id_pairs = [(t_i, label) for t_i in tool_ids]
@@ -409,13 +387,12 @@ def import_label(config, input, label):
 
 
 def _import_labels(config, tool_id_pairs):
-    tools_metadata = ToolsMetadata(config.metadata_file)
-    for tool_entry in tools_metadata.entries():
-        entry_tool_id = tool_entry._tool_id
-        for (tool_id, label) in tool_id_pairs:
-            if entry_tool_id == tool_id:
-                tool_entry.record_external_label(label)
-    tools_metadata.write()
+    with _writable_database(config) as tools_metadata:
+        for tool_entry in tools_metadata.entries():
+            entry_tool_id = tool_entry._tool_id
+            for (tool_id, label) in tool_id_pairs:
+                if entry_tool_id == tool_id:
+                    tool_entry.record_external_label(label)
 
 
 def export_label(config, output, label):
@@ -434,7 +411,9 @@ def arg_parser():
 
     subparsers = parser.add_subparsers(dest="command")
     parser_dump = subparsers.add_parser('import-server', help='import runtime metadata from a target Galaxy server')
-    parser_dump.add_argument('--url', type=str, help='Galaxy server', default=USEGALAXY_ORG_URL)
+    target_group = parser_dump.add_mutually_exclusive_group()
+    target_group.add_argument('--url', type=str, help='Galaxy server URL', default=None)
+    target_group.add_argument('--server', type=str, help='Galaxy server label', choices=list(URLS_BY_LABEL.keys()), default=None)
     parser_dump.add_argument('--api_key', type=str, help='API Key (optional)', default=None)
 
     subparsers.add_parser('import-server-all', help='dump all metadata form usegalaxy.org and usegalaxy.eu')
@@ -489,7 +468,7 @@ def arg_parser():
     parser_import_test_results = subparsers.add_parser('import-tests', help='import test results')
     parser_import_test_results.add_argument('input', help='Input to read from')
     parser_import_test_results.add_argument('test_target', help='Target of tool tests')
-
+    parser_import_test_results.add_argument('--merge-strategy', choices=TestDataMergeStrategy.__members__.keys(), default="latest_executed")
     parser_clear_test_results = subparsers.add_parser('clear-tests', help='clear test results for target server')
     parser_clear_test_results.add_argument('test_target', help='Target of tool tests')
 
@@ -541,7 +520,12 @@ def main(argv=None):
     config = Config(args.tools_metadata)
     command = args.command
     if command == "import-server":
-        server = Server(args.url, args.api_key)
+        url = args.url
+        if url is None and args.server:
+            url = URLS_BY_LABEL[args.server]
+        elif url is None:
+            url = USEGALAXY_ORG_URL
+        server = Server(url, args.api_key)
         bootstrap_tools_metadata(config, server)
     elif command == "import-server-all":
         servers = PUBLIC_SERVERS
@@ -552,7 +536,8 @@ def main(argv=None):
         assert labels
         import_tabular(config, args.input, labels)
     elif command == "import-tests":
-        import_test_results(config, args.input, args.test_target)
+        merge_strategy = TestDataMergeStrategy.__members__[args.merge_strategy]
+        import_test_results(config, args.input, args.test_target, merge_strategy)
     elif command == "export-tabular":
         export_config = ExportSpreadsheetConfig(args)
         export_coverage(config, export_config)
@@ -591,14 +576,11 @@ def main(argv=None):
         raise Exception(f"Unknown command [{command}]")
 
 
-def _open_uri(input_path_or_uri: str):
-    if "://" not in input_path_or_uri:
-        return open(input_path_or_uri, "r")
-    else:
-        http = urllib3.PoolManager()
-        r = http.request('GET', input_path_or_uri, preload_content=False)
-        r.auto_close = False
-        return io.TextIOWrapper(r)
+@contextlib.contextmanager
+def _writable_database(config: Config):
+    db = ToolsMetadata(config.metadata_file)
+    yield db
+    db.write()
 
 
 if __name__ == "__main__":
