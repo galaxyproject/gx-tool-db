@@ -69,7 +69,7 @@ class TestResults(GxToolDbBaseModel):
         for result in version_results:
             cleaned_result = {}
             test_index = result.get("test_index")
-            for key in ["test_index", "status"]:
+            for key in ["status"]:
                 if key in result:
                     cleaned_result[key] = result.get(key)
             job = result.get("job", {})

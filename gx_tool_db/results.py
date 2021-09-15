@@ -47,7 +47,7 @@ class TestResultsCollection(NamedTuple):
 
 
 def result_collections(uri: str) -> Iterator[TestResultsCollection]:
-    if "://" in uri:
+    if "://" in uri or not os.path.isdir(uri):
         yield TestResultsCollection(uri, TestResults(path=uri))
     else:
         yield from _walk_potential_result_files(uri)

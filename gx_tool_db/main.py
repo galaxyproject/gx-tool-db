@@ -24,6 +24,7 @@ from .config import (
     PUBLIC_SERVERS,
     Server,
     TestDataMergeStrategy,
+    URLS_BY_LABEL,
     USEGALAXY_ORG_URL,
     ViewDefintion,
 )
@@ -410,7 +411,9 @@ def arg_parser():
 
     subparsers = parser.add_subparsers(dest="command")
     parser_dump = subparsers.add_parser('import-server', help='import runtime metadata from a target Galaxy server')
-    parser_dump.add_argument('--url', type=str, help='Galaxy server', default=USEGALAXY_ORG_URL)
+    target_group = parser_dump.add_mutually_exclusive_group()
+    target_group.add_argument('--url', type=str, help='Galaxy server URL', default=None)
+    target_group.add_argument('--server', type=str, help='Galaxy server label', choices=list(URLS_BY_LABEL.keys()), default=None)
     parser_dump.add_argument('--api_key', type=str, help='API Key (optional)', default=None)
 
     subparsers.add_parser('import-server-all', help='dump all metadata form usegalaxy.org and usegalaxy.eu')
@@ -517,7 +520,12 @@ def main(argv=None):
     config = Config(args.tools_metadata)
     command = args.command
     if command == "import-server":
-        server = Server(args.url, args.api_key)
+        url = args.url
+        if url is None and args.server:
+            url = URLS_BY_LABEL[args.server]
+        elif url is None:
+            url = USEGALAXY_ORG_URL
+        server = Server(url, args.api_key)
         bootstrap_tools_metadata(config, server)
     elif command == "import-server-all":
         servers = PUBLIC_SERVERS

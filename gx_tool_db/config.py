@@ -17,6 +17,8 @@ SERVER_LABELS = {
     USEGALAXY_AU_URL: 'au',
 }
 
+URLS_BY_LABEL = {v: k for (k, v) in SERVER_LABELS.items()}
+
 PUBLIC_SERVERS = [
     USEGALAXY_ORG_URL,
     TEST_URL,

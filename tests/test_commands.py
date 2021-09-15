@@ -20,25 +20,28 @@ DEPRECATED_TOOLS_URL = (
     "https://gist.githubusercontent.com/jmchilton/651dad1289cb897cfaa92a86a39a184e/raw/65da6b11353732b550f9b1e0f9dc218a6bcef916/gistfile1.txt"
 )
 
+DEFAULT_TEST_SERVER = "eu"
+TEST_SERVER = os.environ.get("GX_TOOL_DB_TEST_SERVER", DEFAULT_TEST_SERVER)
+
 
 @pytest.fixture(scope="module")
-def usegalaxy_org_metadata_dir():
+def usegalaxy_metadata_dir():
     original_working_dir = os.getcwd()
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             os.chdir(tmpdir)
-            main(["import-server"])
+            main(["import-server", "--server", TEST_SERVER])
             yield Path(tmpdir)
     finally:
         os.chdir(original_working_dir)
 
 
-def test_validation(usegalaxy_org_metadata_dir):
+def test_validation(usegalaxy_metadata_dir):
     tool_database: ToolDatabase = load_from_path()
-    verify_mains_tool_panel_skeleton(tool_database)
+    verify_usegalaxy_tool_panel_skeleton(tool_database)
 
 
-def test_export_coverage(usegalaxy_org_metadata_dir):
+def test_export_coverage(usegalaxy_metadata_dir):
     main(["export-tabular", "--output", "foo.tsv", "--all-coverage"])
     output = Path("foo.tsv").read_text("utf-8")
     assert "__DATA_FETCH__" in output
@@ -50,7 +53,7 @@ def test_export_coverage(usegalaxy_org_metadata_dir):
     assert output.startswith("Tool ID,Latest Version")
 
 
-def test_export_coverage_versions(usegalaxy_org_metadata_dir):
+def test_export_coverage_versions(usegalaxy_metadata_dir):
     main(["export-coverage-versions", "--output", "foo.tsv"])
     output = Path("foo.tsv").read_text("utf-8")
     assert "__DATA_FETCH__" in output
@@ -58,13 +61,13 @@ def test_export_coverage_versions(usegalaxy_org_metadata_dir):
     assert output.startswith("Tool ID\tTool Version\tLatest Version\tIs Latest Version")
 
 
-def test_export_install_yaml(usegalaxy_org_metadata_dir):
+def test_export_install_yaml(usegalaxy_metadata_dir):
     main(["export-install-yaml"])
     repos = load_tools_yaml_repos()
     assert len(repos) > 40
 
 
-def test_labelling(usegalaxy_org_metadata_dir):
+def test_labelling(usegalaxy_metadata_dir):
     main(["import-labels", COOL_LABELS_CSV])
     main(["import-label", DEPRECATED_TOOLS, "deprecated"])
     main(["import-label", DEPRECATED_TOOLS_URL, "deprecated2"])
@@ -83,7 +86,7 @@ def test_labelling(usegalaxy_org_metadata_dir):
     assert "toolshed.g2.bx.psu.edu/repos/devteam/cummerbund_to_tabular/cummerbund_to_cuffdiff" in db_deprecated_ids
 
 
-def test_exclude_label(usegalaxy_org_metadata_dir):
+def test_exclude_label(usegalaxy_metadata_dir):
     main(["import-label", DEPRECATED_TOOLS, "deprecated"])
     repos = load_tools_yaml_repos()
     found_ctt = False
@@ -100,33 +103,36 @@ def test_exclude_label(usegalaxy_org_metadata_dir):
     assert not found_ctt
 
 
-def test_require_label(usegalaxy_org_metadata_dir):
+def test_require_label(usegalaxy_metadata_dir):
     main(["import-labels", COOL_LABELS_CSV])
     main(["export-install-yaml", "--require-label", "awesome"])
     repos = load_tools_yaml_repos()
     assert len(repos) == 3
 
 
-def test_load_test_data(usegalaxy_org_metadata_dir):
+def test_load_test_data(usegalaxy_metadata_dir):
     main(["import-tests", RESULTS_JSON, "anvil"])
     load_from_path()
-    main(["export-tabular", "--output", "foo.csv", "--all-tests"])
+    command_1 = ["export-tabular", "--output", "foo.csv", "--test", "anvil"]
+    command_2 = ["export-tabular", "--output", "foo.csv", "--all-tests"]
+    for command in [command_1, command_2]:
+        main(command)
+        deeptools_bam_coverage_found = False
+        with csv_dict_reader("foo.csv") as reader:
+            for row in reader:
+                tool_id = row["Tool ID"]
+                assert "anvil Test Count" in row.keys(), list(row.keys())
+                if tool_id == "toolshed.g2.bx.psu.edu/repos/bgruening/deeptools_bam_coverage/deeptools_bam_coverage":
+                    deeptools_bam_coverage_found = True
+                    assert row["anvil Test Count"] == "7"
+                    assert row["anvil Tests Failed"] == "7"
 
-    deeptools_bam_coverage_found = False
-    with csv_dict_reader("foo.csv") as reader:
-        for row in reader:
-            tool_id = row["Tool ID"]
-            if tool_id == "toolshed.g2.bx.psu.edu/repos/bgruening/deeptools_bam_coverage/deeptools_bam_coverage":
-                deeptools_bam_coverage_found = True
-                assert row["anvil Test Count"] == "7"
-                assert row["anvil Tests Failed"] == "7"
-
-    assert deeptools_bam_coverage_found
+        assert deeptools_bam_coverage_found
 
 
-def test_export_view_require(usegalaxy_org_metadata_dir):
+def test_export_view_require(usegalaxy_metadata_dir):
     main(["import-labels", COOL_LABELS_CSV])
-    main(["export-panel-view", "awesome", "main", "--require-label", "awesome"])
+    main(["export-panel-view", "awesome", TEST_SERVER, "--require-label", "awesome"])
     view_yml = Path("awesome.yml")
     assert view_yml.exists()
     with open(view_yml, "r") as f:
@@ -137,9 +143,9 @@ def test_export_view_require(usegalaxy_org_metadata_dir):
     assert "items" in view_dict
 
 
-def test_export_view_exclude(usegalaxy_org_metadata_dir):
+def test_export_view_exclude(usegalaxy_metadata_dir):
     main(["import-labels", COOL_LABELS_CSV])
-    main(["export-panel-view", "no_meh", "main", "--output", "not_a_single_meh_tool.yml", "--exclude-label", "meh"])
+    main(["export-panel-view", "no_meh", TEST_SERVER, "--output", "not_a_single_meh_tool.yml", "--exclude-label", "meh"])
     view_yml = Path("not_a_single_meh_tool.yml")
     assert view_yml.exists()
     with open(view_yml, "r") as f:
@@ -150,17 +156,17 @@ def test_export_view_exclude(usegalaxy_org_metadata_dir):
     assert "items" in view_dict
 
 
-def test_label_workflow_tools(usegalaxy_org_metadata_dir):
+def test_label_workflow_tools(usegalaxy_metadata_dir):
     main(["label-workflow-tools", EXAMPLE_WORKFLOW_1, "--label", "iwc_required"])
     main(["export-label", "iwc_required_tools.txt", "iwc_required"])
     all_tool_ids = Path("iwc_required_tools.txt").read_text("utf-8")
     assert "toolshed.g2.bx.psu.edu/repos/iuc/samtools_view/samtools_view" in all_tool_ids
 
 
-def verify_mains_tool_panel_skeleton(tool_database: ToolDatabase):
+def verify_usegalaxy_tool_panel_skeleton(tool_database: ToolDatabase):
     # sort of brittle, but check that the recorded skeleton looks like usegalaxy.orgs
     assert tool_database.integrated_panels
-    main_panel = tool_database.integrated_panels["main"].__root__
+    main_panel = tool_database.integrated_panels[TEST_SERVER].__root__
     assert len(main_panel) > 0
     get_data = main_panel[0]
     assert get_data.model_class == "ToolSection"
