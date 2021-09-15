@@ -2,7 +2,11 @@
 Galaxy Tool Database
 ---------------------
 
-Small package for managaging a YAML database of Galaxy tool runtime metadata.
+.. image:: https://badge.fury.io/py/gx-tool-db.svg
+   :target: https://pypi.python.org/pypi/gx-tool-db/
+   :alt: gx-tool-db on the Python Package Index (PyPI)
+
+Small package for managaging a YAML database of Galaxy tool runtime environment metadata.
 
 This Python project can be installed from PyPI using ``pip``.
 
@@ -31,6 +35,18 @@ Run `gx-tool-db` from a clone of the repository and with local changes applied u
     $ python3 -m venv .venv
     $ . .venv/bin/activate
     $ pip install -e .
+
+----------------
+Example Project
+----------------
+
+This project allows automated importing various metadata about tools and exporting various artifacts including
+reports. To see an example project setup around a database and how to use ``gx-tool-db`` to import data into such
+a database and export reports - checkout https://github.com/jmchilton/gx-tool-db-project.
+
+In particular, checkout bootstrap_db.sh and export.sh for example calls with real data. Storing the database
+as a structured YAML file allows the resulting data to be stored pretty naturally in a Github project - checkout
+the latest generated database for that project in ``tools_metadata.yml``.
 
 ----------------
 Getting Started
