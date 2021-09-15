@@ -178,10 +178,21 @@ class TrainingMetadata(GxToolDbBaseModel):
         return hash((type(self),) + tuple(self.__dict__.values()))
 
 
+class Xref(GxToolDbBaseModel):
+    reftype: str
+    value: str
+
+
 class ToolVersionMetadata(GxToolDbBaseModel):
     test_results: Optional[Dict[str, TestResults]]
     servers: Optional[Dict[str, ServerToolVersionMetadata]]
     trainings: Optional[List[TrainingMetadata]]
+    name: Optional[str]
+    description: Optional[str]
+    edam_operations: Optional[List[str]]
+    edam_topics: Optional[List[str]]
+    xrefs: Optional[List[Xref]]
+    model_class: Optional[str]
 
 
 class ToolShedRepostiry(GxToolDbBaseModel):

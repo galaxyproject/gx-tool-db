@@ -62,7 +62,8 @@ def _parse_tools_from_file(path: str) -> Set[ToolVersionTuple]:
 def _walk_potential_workflow_files(path: str):
     for (dirpath, _, filenames) in repository_walk(path, extensions=[".yml", ".yaml", ".ga"]):
         for filename in filenames:
-            if filename == "data-library.yaml":
+            # ignore some common training material / ephemeris files that aren't workflows...
+            if filename in ["data-library.yaml", "data-manager.yaml", "tools.yaml"]:
                 continue
             if "test." in filename or "tests." in filename:
                 # probably a Galaxy test.

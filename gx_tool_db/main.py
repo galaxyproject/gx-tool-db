@@ -82,6 +82,14 @@ def bootstrap_tools_metadata(config: Config, server: Server):
             tool_entry.record_ts_repo(repo)
             labels = tool['labels']
             tool_version_entry.record_labels(labels)
+            tool_version_entry.record_metadata(
+                name=tool['name'],
+                description=tool['description'],
+                xrefs=tool.get('xrefs', []),
+                edam_operations=tool.get('edam_operations', []),
+                edam_topics=tool.get('edam_topics', []),
+                model_class=tool.get('model_class')
+            )
 
         for entry in in_panel:
             if entry["model_class"] != "ToolSection":
@@ -203,12 +211,26 @@ def import_test_results(config, uri, test_target, merge_strategy: TestDataMergeS
                     tool_version_entry.record_test_results(test_target, test_results, merge_strategy)
 
 
-def export_coverage(config, export_config: ExportSpreadsheetConfig):
-    rows = []
+def export_coverage(config: Config, export_config: ExportSpreadsheetConfig):
+    rows: List[List[Optional[str]]] = []
     tools_metadata = ToolsMetadata(config.metadata_file)
 
     # Assemble header...
-    header = [COLUMN_HEADER_TOOL_ID, COLUMN_HEADER_LATEST_VERSION]
+    header: List[Optional[str]] = [COLUMN_HEADER_TOOL_ID, COLUMN_HEADER_LATEST_VERSION]
+
+    # Include tool metadata.
+    if export_config.include_name:
+        header.append("Tool Name")
+    if export_config.include_description:
+        header.append("Tool Description")
+    if export_config.include_model_class:
+        header.append("Tool Class")
+    if export_config.include_tool_shed:
+        header.append("Tool Shed")
+    if export_config.include_repository_owner:
+        header.append("Repository Owner")
+    if export_config.include_repository_name:
+        header.append("Repository Name")
 
     # Assemble training headers columns...
     if export_config.include_training_topics:
@@ -257,10 +279,24 @@ def export_coverage(config, export_config: ExportSpreadsheetConfig):
         tool_id = tool_entry.tool_id
         tool_metadata = tool_entry._source_data
 
-        # Add coverage columns (if any)
         latest_version = tool_entry.latest_version
-        row = [tool_id, latest_version]
+        row: List[Optional[str]] = [tool_id, latest_version]
 
+        # Include tool metadata.
+        if export_config.include_name:
+            row.append(tool_entry.name)
+        if export_config.include_description:
+            row.append(tool_entry.description)
+        if export_config.include_model_class:
+            row.append(tool_entry.model_class)
+        if export_config.include_tool_shed:
+            row.append(tool_entry.tool_shed)
+        if export_config.include_repository_owner:
+            row.append(tool_entry.repository_owner)
+        if export_config.include_repository_name:
+            row.append(tool_entry.repository_name)
+
+        # Include tool metadata.
         if export_config.include_training_topics:
             row.append(",".join(tool_entry.training_topics))
         if export_config.include_training_tutorials:
@@ -441,6 +477,24 @@ def arg_parser():
     )
     parser_export_tabular.add_argument(
         '--training-tutorials', help="include column for training topic:tutorial", action="store_true",
+    )
+    parser_export_tabular.add_argument(
+        '--name', help="Include tool name.", action="store_true",
+    )
+    parser_export_tabular.add_argument(
+        '--description', help="Include tool description.", action="store_true",
+    )
+    parser_export_tabular.add_argument(
+        '--model-class', help="Include tool's model class.", action="store_true",
+    )
+    parser_export_tabular.add_argument(
+        '--tool-shed', help="Include tool shed.", action="store_true",
+    )
+    parser_export_tabular.add_argument(
+        '--repository-owner', help="Include tool shed repository owner.", action="store_true",
+    )
+    parser_export_tabular.add_argument(
+        '--repository-name', help="Include tool shed repository name.", action="store_true",
     )
 
     coverage_group = parser_export_tabular.add_mutually_exclusive_group()
