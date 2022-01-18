@@ -94,8 +94,8 @@ second will contain main's whole toolbox with the exclusion of deprecated tools.
 
 ::
 
-    $ gx-tool-db export-install-yaml main --require_label iwc_required
-    $ gx-tool-db export-install-yaml main --exclude_label deprecated
+    $ gx-tool-db export-install-yaml main --require-label iwc_required
+    $ gx-tool-db export-install-yaml main --exclude-label deprecated
 
 Tool panel views (https://docs.google.com/presentation/d/1qKhWhJYe3LmDd0sKaY247s4DxjjZdi807YV_4TqYfGA)
 can also be constructed from these tool labels.
@@ -105,19 +105,19 @@ tool panel containing only tools with the label ``iwc_required``.
 
 ::
 
-    $ gx-tool-db export-panel-view best_practices main --require_label iwc_required
+    $ gx-tool-db export-panel-view best_practices main --require-label iwc_required
 
 The following command will produce a file (best_practices.yml) that will be a frozen version of usegalaxy.org
 tool panel containing only tools with the label ``iwc_required``.
 
 Since Galaxy doesn't know about these external labels, the panel is frozen and the above command
-needs to be re-run as new tools are labelled. Alternatively, when using ``--exclude_label``
+needs to be re-run as new tools are labelled. Alternatively, when using ``--exclude-label``
 main's sections can have tools added to them and they will be assumed to be non-deprecated and
 will appear in the tool panel.
 
 ::
 
-    $ gx-tool-db export-panel-view best_practices main --exclude_label deprecated
+    $ gx-tool-db export-panel-view best_practices main --exclude-label deprecated
 
 This application provides some utilities for automatically applying these tool labels
 but manual curation is still important when grouping tools. This can be done in the YAML
