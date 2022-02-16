@@ -120,6 +120,19 @@ def bootstrap_tools_metadata(config: Config, server: Server):
         tools_metadata.record_panel_skeleton(integrated_panel_skeleton, server)
 
 
+def label_server_tools(config: Config, label: str, server: Server):
+    with _writable_database(config) as tools_metadata:
+        in_panel = tools_request(server=server, in_panel=True)
+        for entry in in_panel:
+            if entry["model_class"] != "ToolSection":
+                continue
+            for section_elem in entry.get("elems", []):
+                if section_elem["model_class"] != "Tool":
+                    continue
+                tool_entry = tools_metadata.get_entry_for_api_value(section_elem)
+                tool_entry.record_external_label(label)
+
+
 def tools_request(server: Server, in_panel=False):
     url = server.url
     api_key = server.key
@@ -454,18 +467,26 @@ def import_training(config, directory):
         tools_metadata.import_trainings(directory)
 
 
+def _add_target_arguments(parser):
+    target_group = parser.add_mutually_exclusive_group()
+    target_group.add_argument('--url', type=str, help='Galaxy server URL', default=None)
+    target_group.add_argument('--server', type=str, help='Galaxy server label', choices=list(URLS_BY_LABEL.keys()), default=None)
+    parser.add_argument('--api_key', type=str, help='API Key (optional)', default=None)
+
+
 def arg_parser():
     parser = argparse.ArgumentParser(description="Manage runtime metadata about tools across Galaxy servers")
     parser.add_argument('--tools_metadata', type=str, help='File containing merged tools metadata (YAML)', default=DEFAULT_DATABASE_PATH)
 
     subparsers = parser.add_subparsers(dest="command")
     parser_dump = subparsers.add_parser('import-server', help='import runtime metadata from a target Galaxy server')
-    target_group = parser_dump.add_mutually_exclusive_group()
-    target_group.add_argument('--url', type=str, help='Galaxy server URL', default=None)
-    target_group.add_argument('--server', type=str, help='Galaxy server label', choices=list(URLS_BY_LABEL.keys()), default=None)
-    parser_dump.add_argument('--api_key', type=str, help='API Key (optional)', default=None)
+    _add_target_arguments(parser_dump)
 
     subparsers.add_parser('import-server-all', help='dump all metadata form usegalaxy.org and usegalaxy.eu')
+
+    import_server_as_label_parser = subparsers.add_parser('import-server-as-label', help='label all tools from server with specified label')
+    _add_target_arguments(import_server_as_label_parser)
+    import_server_as_label_parser.add_argument('label', help='label to add to all tools on the server')
 
     HELP_ARG_OUTPUT = 'Report file to output (csv or tsv)'
     HELP_EXPORT_COVERAGE = 'export spreadsheet summary of data'
@@ -564,7 +585,7 @@ def arg_parser():
     parser_export_view.add_argument('server', type=str, help='Server to use for tool panel backbone and section definitions')
     parser_export_view.add_argument('--output', type=str, help="Output YAML (defaults to <id>.yml", default=None)
     HELP_ARG_VIEW_TYPE = "Panel view type (generic, activity, publication, training, ...)"
-    parser_export_view.add_argument('--view_type', type=str, help=HELP_ARG_VIEW_TYPE, default=DEFAULT_PANEL_VIEW_TYPE)
+    parser_export_view.add_argument('--view-type', type=str, help=HELP_ARG_VIEW_TYPE, default=DEFAULT_PANEL_VIEW_TYPE)
     parser_export_view.add_argument('--description', type=str, help="End user description of panel view.")
     add_common_filters(parser_export_view)
 
@@ -590,6 +611,16 @@ def add_common_filters(parser):
     )
 
 
+def _server_from_args(args) -> Server:
+    url = args.url
+    if url is None and args.server:
+        url = URLS_BY_LABEL[args.server]
+    elif url is None:
+        url = USEGALAXY_ORG_URL
+    server = Server(url, args.api_key)
+    return server
+
+
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
@@ -599,12 +630,7 @@ def main(argv=None):
     config = Config(args.tools_metadata)
     command = args.command
     if command == "import-server":
-        url = args.url
-        if url is None and args.server:
-            url = URLS_BY_LABEL[args.server]
-        elif url is None:
-            url = USEGALAXY_ORG_URL
-        server = Server(url, args.api_key)
+        server = _server_from_args(args)
         bootstrap_tools_metadata(config, server)
     elif command == "import-server-all":
         servers = PUBLIC_SERVERS
@@ -650,6 +676,9 @@ def main(argv=None):
     elif command == "import-trainings":
         directory = args.training_directory
         import_training(config, directory)
+    elif command == "import-server-as-label":
+        server = _server_from_args(args)
+        label_server_tools(config, args.label, server)
     elif command == "_google-export":
         google_export(args.input, args.sheet_id)
     elif command == "_google-import":
