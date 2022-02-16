@@ -9,7 +9,9 @@ History
 0.4.0.dev0
 ---------------------
 
-    
+* Fix up more arguments to use hyphens instead of underscores.
+* Add new command to add labels for all tools from a server (for bootstrapping flavors).
+* Readme fixes and improvements.
 
 ---------------------
 0.3.0 (2021-09-15)
