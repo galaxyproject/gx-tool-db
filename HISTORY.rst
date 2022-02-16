@@ -6,7 +6,7 @@ History
 .. to_doc
 
 ---------------------
-0.4.0.dev0
+0.4.0 (2022-02-16)
 ---------------------
 
 * Fix up more arguments to use hyphens instead of underscores.
