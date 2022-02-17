@@ -381,15 +381,21 @@ class ToolEntry:
         sections[section_id] = {"name": section_name}
 
     def record_external_label(self, label, present=True):
-        external_labels = _ensure_key(self._source_data, "external_labels", [])
         if present:
+            external_labels = _ensure_key(self._source_data, "external_labels", [])
             if label not in external_labels:
                 external_labels.append(label)
         else:
+            if not "external_labels" in self._source_data:
+                return
+
+            external_labels = _ensure_key(self._source_data, "external_labels", [])
             if label in external_labels:
                 external_labels.remove(label)
 
     def has_external_label(self, label):
+        if not "external_labels" in self._source_data:
+            return False
         external_labels = _ensure_key(self._source_data, "external_labels", [])
         return label in external_labels
 
