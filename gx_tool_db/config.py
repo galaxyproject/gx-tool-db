@@ -8,7 +8,7 @@ DEFAULT_DATABASE_PATH = "tools_metadata.yml"
 USEGALAXY_ORG_URL = "https://usegalaxy.org"
 TEST_URL = "https://test.galaxyproject.org"
 USEGALAXY_EU_URL = "https://usegalaxy.eu"
-USEGALAXY_AU_URL = "htttps://usegalaxy.org.au"
+USEGALAXY_AU_URL = "https://usegalaxy.org.au"
 
 SERVER_LABELS = {
     USEGALAXY_ORG_URL: 'main',
