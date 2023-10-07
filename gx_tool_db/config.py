@@ -15,7 +15,7 @@ SERVER_LABELS = {
     TEST_URL: 'test',
     USEGALAXY_EU_URL: 'eu',
     USEGALAXY_AU_URL: 'au',
-    "https://clipseq.usegalaxy.eu/": "cliqseq_eu",
+    "https://clipseq.usegalaxy.eu/": "clipseq_eu",
     "https://humancellatlas.usegalaxy.eu/": "humancellatlas_eu",
     "https://metabolomics.usegalaxy.eu/": "metabolomics_eu",
     "https://ml.usegalaxy.eu/": "ml_eu",
