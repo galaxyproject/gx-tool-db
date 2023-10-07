@@ -4,7 +4,7 @@ google-auth-oauthlib
 gspread
 gxformat2
 packaging
-pydantic
+pydantic<2
 requests
 pyyaml
 typing-extensions
