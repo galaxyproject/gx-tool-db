@@ -229,6 +229,7 @@ class ToolsMetadata:
                 section = {
                     "id": panel_skeleton_item_id,
                     "name": name,
+                    "type": "section",
                 }
                 # If we're requiring a label need to specify the elements, otherwise we can just
                 # count on a global exclude of the tools in the map.
