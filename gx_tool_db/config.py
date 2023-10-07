@@ -74,6 +74,7 @@ class Server:
 
 class ViewDefintion(FilterArguments):
     id: str
+    name: Optional[str] = None
     output: Optional[str] = None
     view_type: str = DEFAULT_PANEL_VIEW_TYPE
     description: Optional[str] = None
