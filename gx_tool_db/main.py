@@ -586,6 +586,7 @@ def arg_parser():
     parser_export_view.add_argument('--output', type=str, help="Output YAML (defaults to <id>.yml", default=None)
     HELP_ARG_VIEW_TYPE = "Panel view type (generic, activity, publication, training, ...)"
     parser_export_view.add_argument('--view-type', type=str, help=HELP_ARG_VIEW_TYPE, default=DEFAULT_PANEL_VIEW_TYPE)
+    parser_export_view.add_argument('--name', type=str, help="Name of panel view.")
     parser_export_view.add_argument('--description', type=str, help="End user description of panel view.")
     add_common_filters(parser_export_view)
 
@@ -666,6 +667,7 @@ def main(argv=None):
         view_def.output = args.output
         view_def.view_type = args.view_type
         view_def.description = args.description
+        view_def.name = args.name
         view_def.require_labels = args.require_labels
         view_def.exclude_labels = args.exclude_labels
         export_panel_view(config, args.server, view_def)

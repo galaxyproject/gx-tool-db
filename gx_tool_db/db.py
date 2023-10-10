@@ -195,7 +195,11 @@ class ToolsMetadata:
         filter_criteria.require_labels = view_def.require_labels
         filter_criteria.exclude_labels = view_def.exclude_labels
 
-        rval: Dict[str, Any] = {"id": view_def.id, "type": view_def.view_type}
+        rval: Dict[str, Any] = {
+            "id": view_def.id,
+            "type": view_def.view_type,
+            "name": view_def.name or view_def.id,
+        }
         if view_def.description:
             rval["description"] = view_def.description
 
@@ -229,6 +233,7 @@ class ToolsMetadata:
                 section = {
                     "id": panel_skeleton_item_id,
                     "name": name,
+                    "type": "section",
                 }
                 # If we're requiring a label need to specify the elements, otherwise we can just
                 # count on a global exclude of the tools in the map.
