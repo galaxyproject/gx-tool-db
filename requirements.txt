@@ -1,9 +1,9 @@
+galaxy-tool-util
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
 gspread
 gxformat2
-packaging
 pydantic<2
 requests
 pyyaml

@@ -3,8 +3,8 @@ import shutil
 import tempfile
 from typing import Any, Dict, Iterator, List, Optional, Set
 
-import packaging.version
 import yaml
+from galaxy.tool_util import version
 
 from .config import FilterArguments, Server, TestDataMergeStrategy, ViewDefintion
 from .io import warn
@@ -598,4 +598,4 @@ def _version_sorted_keys(versions_dict: Dict[str, Any]) -> List[str]:
 
 
 def version_sorted_iterable(iterable) -> List[str]:
-    return list(sorted(iterable, key=packaging.version.parse, reverse=True))
+    return list(sorted(iterable, key=version.parse_version, reverse=True))
